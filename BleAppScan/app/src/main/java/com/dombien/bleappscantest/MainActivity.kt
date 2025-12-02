@@ -1,6 +1,10 @@
 package com.dombien.bleappscantest
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -14,6 +18,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -26,45 +31,62 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.util.UUID
 
+@SuppressLint("MissingPermission")
 class MainActivity : AppCompatActivity() {
-    val TARGET_MAC_ADDRESS: String = "D5:09:31:54:37:C7"
+    val TARGET_MAC_ADDRESS: String = "C7:95:DA:5F:44:8A"
 
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var bleScanner: BluetoothLeScanner? = null
     private var scanCallback: ScanCallback? = null
     private var bluetoothGatt: BluetoothGatt? = null
+    private var bluetoothManager: BluetoothManager? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private var scanning = false
     private var isConnecting = false
 
     private lateinit var btnScan: Button
-    private lateinit var tvHeartRate: TextView
+    private lateinit var tvStatus: TextView
+    private lateinit var tvTemperature: TextView
     private lateinit var adapter: DevicesAdapter
     private val devicesMap: MutableMap<String, BleDevice> = LinkedHashMap()
+
+    private lateinit var notificationManager: NotificationManagerCompat
+    private val CHANNEL_ID = "ble_temp_channel"
+    private val NOTIFICATION_ID = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        notificationManager = NotificationManagerCompat.from(this)
+        createNotificationChannel()
+
         btnScan = findViewById(R.id.btnScan)
-        tvHeartRate = findViewById(R.id.tvHeartRate)
+        tvStatus = findViewById(R.id.tvStatus)
+        tvTemperature = findViewById(R.id.tvTemperature)
         val recycler = findViewById<RecyclerView>(R.id.recycler)
         recycler.layoutManager = LinearLayoutManager(this)
         adapter = DevicesAdapter(ArrayList())
         recycler.adapter = adapter
 
-        val manager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothAdapter = manager.adapter
+        bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+        bluetoothAdapter = bluetoothManager?.adapter
 
         if (bluetoothAdapter == null) {
             Toast.makeText(this, "Bluetooth not supported", Toast.LENGTH_LONG).show()
             finish()
             return
+        }
+
+        if (hasPermissions()) {
+            unpairDeviceOnStart()
         }
 
         btnScan.setOnClickListener {
@@ -79,6 +101,52 @@ class MainActivity : AppCompatActivity() {
 
         buildScanCallback()
     }
+
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "BLE Scan App test notification"
+            val descriptionText = ""
+            val importance = NotificationManager.IMPORTANCE_LOW
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun updateNotification(temperatureText: String) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_warning)
+            .setContentTitle("Temperature")
+            .setContentText(temperatureText)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(pendingIntent)
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .setAutoCancel(false)
+
+        notificationManager.notify(NOTIFICATION_ID, builder.build())
+    }
+
+    private fun cancelNotification() {
+        notificationManager.cancel(NOTIFICATION_ID)
+    }
+
 
     private fun buildScanCallback() {
         scanCallback = object : ScanCallback() {
@@ -99,16 +167,34 @@ class MainActivity : AppCompatActivity() {
 
         devicesMap.clear()
         adapter.updateList(ArrayList())
-        tvHeartRate.text = "Scanning...."
+        tvStatus.text = "Looking for device..."
+        tvTemperature.text = ""
+
+        val connectedDevices = bluetoothManager?.getConnectedDevices(BluetoothProfile.GATT)
+        if (connectedDevices != null) {
+            for (device in connectedDevices) {
+                if (device.address == TARGET_MAC_ADDRESS) {
+                    Log.i(TAG, "Device found in system connected list! Connecting directly.")
+                    connectToDevice(device)
+                    return
+                }
+            }
+        }
 
         bleScanner = bluetoothAdapter?.bluetoothLeScanner
         if (bleScanner == null) return
 
-        val scanFilter = ScanFilter.Builder().setDeviceAddress(TARGET_MAC_ADDRESS).build()
-        val filters = mutableListOf(scanFilter)
-        val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
+        tvStatus.text = "Scanning..."
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) return
+        val filters: List<ScanFilter> = ArrayList()
+        val settingsBuilder = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            settingsBuilder.setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
+        }
+
+        val settings = settingsBuilder.build()
 
         bleScanner?.startScan(filters, settings, scanCallback)
         scanning = true
@@ -117,7 +203,14 @@ class MainActivity : AppCompatActivity() {
         handler.postDelayed({
             if (scanning) {
                 stopBleScan()
-                runOnUiThread { tvHeartRate.text = "No device found." }
+                runOnUiThread {
+                    tvStatus.text = "Device not found"
+                    Toast.makeText(
+                        this,
+                        "This device is not found or is connected to another device.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }, SCAN_PERIOD.toLong())
     }
@@ -125,30 +218,50 @@ class MainActivity : AppCompatActivity() {
     private fun stopBleScan() {
         handler.removeCallbacksAndMessages(null)
         if (bleScanner != null && scanning) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) return
-            bleScanner?.stopScan(scanCallback)
+            try {
+                bleScanner?.stopScan(scanCallback)
+            } catch (e: Exception) {
+                Log.e(TAG, "Scan stop error", e)
+            }
         }
         scanning = false
-        runOnUiThread { btnScan.text = "Start scan" }
+        runOnUiThread {
+            btnScan.text = "Start scan"
+            tvStatus.text = "Scan stopped"
+        }
     }
 
     private fun handleScanResult(result: ScanResult) {
+        if (result.device.address != TARGET_MAC_ADDRESS) {
+            return
+        }
+
         if (isConnecting || bluetoothGatt != null) return
         stopBleScan()
+        Log.i(TAG, "Device found via Scan: ${result.device.address}")
         connectToDevice(result.device)
     }
 
     private fun connectToDevice(device: BluetoothDevice) {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
-        isConnecting = true
-        tvHeartRate.text = "Connect...."
+        if (bluetoothGatt != null) {
+            bluetoothGatt?.close()
+            bluetoothGatt = null
+        }
 
-        val d = BleDevice(device.name, device.address, -1, -1, null, null)
+        isConnecting = true
+        tvStatus.text = "Connecting..."
+
+        val d = BleDevice(device.name, device.address)
         devicesMap[device.address] = d
         runOnUiThread { adapter.updateList(ArrayList(devicesMap.values)) }
 
         handler.postDelayed(connectionTimeoutRunnable, CONNECTION_TIMEOUT.toLong())
-        bluetoothGatt = device.connectGatt(this, false, gattCallback)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            bluetoothGatt = device.connectGatt(applicationContext, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        } else {
+            bluetoothGatt = device.connectGatt(applicationContext, false, gattCallback)
+        }
     }
 
     private val connectionTimeoutRunnable = Runnable {
@@ -163,91 +276,123 @@ class MainActivity : AppCompatActivity() {
             handler.removeCallbacks(connectionTimeoutRunnable)
             isConnecting = false
 
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    Log.i(TAG, "Connected to GATT server.")
-                    runOnUiThread {
-                        btnScan.text = "Disconnect"
-                        tvHeartRate.text = "Connected!"
-                    }
-                    if (ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
-                    gatt.discoverServices()
-                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    Log.i(TAG, "Disconnected from GATT server.")
-                    refreshDeviceCache(gatt)
-                    if (ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
-                    gatt.close()
-                    bluetoothGatt = null
-                    runOnUiThread {
-                        tvHeartRate.text = "Disconnected"
-                        btnScan.text = "Start scan"
-                        adapter.updateList(ArrayList())
-                    }
+            if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
+                Log.i(TAG, "Connected to GATT server.")
+                runOnUiThread {
+                    btnScan.text = "Disconnect"
+                    tvStatus.text = "Connected!"
+                    btnScan.isEnabled = true
+                    updateNotification("Connected. Waiting for data...")
                 }
+
+                handler.postDelayed({
+                    if (bluetoothGatt != null) gatt.discoverServices()
+                }, 500)
+
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.i(TAG, "Disconnected")
+                gatt.close()
+                if (bluetoothGatt == gatt) {
+                    bluetoothGatt = null
+                }
+                runOnUiThread { finishDisconnection() }
+
             } else {
-                Log.w(TAG, "GATT Error onConnectionStateChange: $status")
-                disconnect()
+                Log.w(TAG, "Gatt Error: $status")
+                gatt.close()
+                if (bluetoothGatt == gatt) bluetoothGatt = null
+
+                runOnUiThread {
+                    finishDisconnection()
+                    tvStatus.text = "Error: $status"
+                }
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                enableHeartRateNotifications(gatt)
+                enableTemperatureNotifications(gatt)
             } else {
                 Log.w(TAG, "Service discovery failed with status: $status")
                 disconnect()
             }
         }
 
+        override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.i(TAG, "Descriptor written successfully.")
+                runOnUiThread { tvStatus.text = "Receiving Data..." }
+            }
+        }
+
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            if (HEART_RATE_MEASUREMENT_CHAR_UUID == characteristic.uuid) {
-                val data = characteristic.value ?: return
-                val flag = data[0].toInt()
-                val format = if ((flag and 0x01) != 0) BluetoothGattCharacteristic.FORMAT_UINT16 else BluetoothGattCharacteristic.FORMAT_UINT8
-                val heartRate = characteristic.getIntValue(format, 1)
-                runOnUiThread { tvHeartRate.text = "Hearth Rate: $heartRate BPM" }
+            if (characteristic.uuid == TEMPERATURE_CHAR_UUID) {
+                val temperatureValue = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0)
+                val temperatureCelsius = temperatureValue / 100.0f
+                val formattedTemp = "%.2f °C".format(temperatureCelsius)
+
+                updateNotification("Current: $formattedTemp")
+
+                runOnUiThread {
+                    tvTemperature.text = formattedTemp
+                    tvStatus.text = "Connected"
+                }
             }
         }
     }
 
-    private fun refreshDeviceCache(gatt: BluetoothGatt): Boolean {
-        try {
-            val refresh = gatt.javaClass.getMethod("refresh")
-            val success = refresh.invoke(gatt) as Boolean
-            Log.i(TAG, "GATT Cache refreshed: $success")
-            return success
-        } catch (e: Exception) {
-            Log.e(TAG, "An error occurred while refreshing GATT cache", e)
-        }
-        return false
-    }
-
-    private fun enableHeartRateNotifications(gatt: BluetoothGatt) {
-        val service = gatt.getService(HEART_RATE_SERVICE_UUID)
-        if (service == null) {
-            disconnect()
-            return
-        }
-        val characteristic = service.getCharacteristic(HEART_RATE_MEASUREMENT_CHAR_UUID)
+    private fun enableTemperatureNotifications(gatt: BluetoothGatt) {
+        val service = gatt.getService(ENVIRONMENTAL_SENSING_SERVICE_UUID)
+        val characteristic = service?.getCharacteristic(TEMPERATURE_CHAR_UUID)
         if (characteristic == null) {
+            Log.e(TAG, "Temperature characteristic not found.")
             disconnect()
             return
         }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
         gatt.setCharacteristicNotification(characteristic, true)
         val descriptor = characteristic.getDescriptor(CLIENT_CHARACTERISTIC_CONFIG_UUID)
         descriptor?.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
         descriptor?.let { gatt.writeDescriptor(it) }
-        runOnUiThread { tvHeartRate.text = "Waiting....." }
     }
 
     private fun disconnect() {
-        handler.removeCallbacksAndMessages(null)
-        isConnecting = false
+        handler.removeCallbacks(connectionTimeoutRunnable)
+
+        cancelNotification()
+
+        if (bluetoothGatt != null) {
+            tvStatus.text = "Disconnecting & Forgetting..."
+            btnScan.isEnabled = false
+
+            val deviceToForget = bluetoothGatt?.device
+            refreshDeviceCache(bluetoothGatt!!)
+
+            bluetoothGatt?.disconnect()
+            bluetoothGatt?.close()
+            bluetoothGatt = null
+
+            if (deviceToForget != null) {
+                removeBond(deviceToForget)
+            }
+
+            finishDisconnection()
+        } else {
+            finishDisconnection()
+        }
+    }
+
+    private fun finishDisconnection() {
         scanning = false
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return
-        bluetoothGatt?.disconnect()
+        isConnecting = false
+
+        cancelNotification()
+
+        tvStatus.text = "Disconnected"
+        tvTemperature.text = ""
+        btnScan.text = "Start scan"
+        btnScan.isEnabled = true
+        adapter.updateList(ArrayList())
     }
 
     private val isBluetoothEnabled: Boolean
@@ -265,7 +410,14 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun hasPermissions(): Boolean {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PERMISSIONS_ANDROID12 else PERMISSIONS_BEFORE_S
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PERMISSIONS_ANDROID13
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PERMISSIONS_ANDROID12
+        } else {
+            PERMISSIONS_BEFORE_S
+        }
+
         for (p in permissions) {
             if (ActivityCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
                 requestAppropriatePermissions()
@@ -276,38 +428,84 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestAppropriatePermissions() {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PERMISSIONS_ANDROID12 else PERMISSIONS_BEFORE_S
-        ActivityCompat.requestPermissions(this, permissions, 1234)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1234) {
-            if (grantResults.any { it != PackageManager.PERMISSION_GRANTED }) {
-                Toast.makeText(this, "Permissions required", Toast.LENGTH_LONG).show()
-            }
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PERMISSIONS_ANDROID13
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PERMISSIONS_ANDROID12
+        } else {
+            PERMISSIONS_BEFORE_S
         }
+        ActivityCompat.requestPermissions(this, permissions, 1234)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        disconnect()
+        stopBleScan()
+        cancelNotification()
+
+        if (bluetoothGatt != null) {
+            bluetoothGatt?.disconnect()
+            bluetoothGatt?.close()
+            bluetoothGatt = null
+        }
+    }
+
+    private fun removeBond(device: BluetoothDevice) {
+        try {
+            val method = device.javaClass.getMethod("removeBond")
+            method.invoke(device)
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
+    private fun refreshDeviceCache(gatt: BluetoothGatt): Boolean {
+        try {
+            val localMethod = gatt.javaClass.getMethod("refresh")
+            val result = localMethod.invoke(gatt) as Boolean
+            return result
+        } catch (e: Exception) {
+            // ignore
+        }
+        return false
+    }
+
+    private fun unpairDeviceOnStart() {
+        try {
+            val device = bluetoothAdapter?.getRemoteDevice(TARGET_MAC_ADDRESS)
+            if (device != null && device.bondState == BluetoothDevice.BOND_BONDED) {
+                removeBond(device)
+            }
+        } catch (e: Exception) {
+            // ignore
+        }
     }
 
     companion object {
-        private const val TAG = "BleFinder"
+        private const val TAG = "ValkyrieScanner"
         private const val REQUEST_ENABLE_BLUETOOTH = 1
-        private const val SCAN_PERIOD = 10000
-        private const val CONNECTION_TIMEOUT = 15000
+        private const val SCAN_PERIOD = 4000
+        private const val CONNECTION_TIMEOUT = 3000
 
-        private val HEART_RATE_SERVICE_UUID: UUID = UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb")
-        private val HEART_RATE_MEASUREMENT_CHAR_UUID: UUID = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb")
+        private val ENVIRONMENTAL_SENSING_SERVICE_UUID = UUID.fromString("0000181a-0000-1000-8000-00805f9b34fb")
+        private val TEMPERATURE_CHAR_UUID = UUID.fromString("00002a6e-0000-1000-8000-00805f9b34fb")
         private val CLIENT_CHARACTERISTIC_CONFIG_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
         private val PERMISSIONS_BEFORE_S: Array<String> = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+
         private val PERMISSIONS_ANDROID12: Array<String> = arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.BLUETOOTH_CONNECT
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+
+
+        @SuppressLint("InlinedApi")
+        private val PERMISSIONS_ANDROID13: Array<String> = arrayOf(
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.POST_NOTIFICATIONS
         )
     }
 }

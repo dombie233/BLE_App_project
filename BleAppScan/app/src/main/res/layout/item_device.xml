@@ -27,29 +27,7 @@
             android:layout_height="wrap_content"
             android:text="MAC"/>
 
-        <TextView
-            android:id="@+id/tvRssi"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="RSSI"/>
 
-        <TextView
-            android:id="@+id/tvType"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Type"/>
-
-        <TextView
-            android:id="@+id/tvServices"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Services"/>
-
-        <TextView
-            android:id="@+id/tvTxPower"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="TxPower"/>
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>
