@@ -11,6 +11,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:background="#292929"
+
         android:padding="10dp">
 
         <TextView
@@ -18,6 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textStyle="bold"
+            android:textColor="#ffff"
             android:textSize="16sp"
             android:text="Device name"/>
 
@@ -25,6 +28,7 @@
             android:id="@+id/tvAddress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textColor="#ffff"
             android:text="MAC"/>
 
 

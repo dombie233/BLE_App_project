@@ -1,15 +1,17 @@
-package com.dombien.bleappscantest
+package com.dombien.bleappscantest.BLE
 
-import android.bluetooth.BluetoothDevice
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.dombien.bleappscantest.DevicesAdapter.BleVH
+import com.dombien.bleappscantest.R
 
-class DevicesAdapter(private var bleItems: MutableList<BleDevice>?) :
-    RecyclerView.Adapter<BleVH>() {
+class DevicesAdapter(
+    private var bleItems: MutableList<BleDevice>?,
+    private val onDeviceClick: (BleDevice) -> Unit
+) : RecyclerView.Adapter<DevicesAdapter.BleVH>() {
+
     fun updateList(newList: MutableList<BleDevice>?) {
         this.bleItems = newList
         notifyDataSetChanged()
@@ -22,21 +24,21 @@ class DevicesAdapter(private var bleItems: MutableList<BleDevice>?) :
     }
 
     override fun onBindViewHolder(holder: BleVH, position: Int) {
-        val d = bleItems!!.get(position)
-        holder.tvName.text = if (d.name != null) d.name else "—"
+        val d = bleItems?.get(position) ?: return
+        holder.tvName.text = d.name ?: "Unknown Device"
         holder.tvAddress.text = d.address
 
+        holder.itemView.setOnClickListener {
+            onDeviceClick(d)
+        }
     }
 
     override fun getItemCount(): Int {
         return bleItems?.size ?: 0
     }
 
-    inner class BleVH(v: View) : RecyclerView.ViewHolder(v) {
+    class BleVH(v: View) : RecyclerView.ViewHolder(v) {
         var tvName: TextView = v.findViewById(R.id.tvName)
         var tvAddress: TextView = v.findViewById(R.id.tvAddress)
-
     }
-
-
 }

@@ -1,77 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:fitsSystemWindows="true">
 
+    <!-- Linia pomocnicza: 15% (koniec Navbara) -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline15"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.15" />
+
+    <!-- Linia pomocnicza: 85% (koniec obszaru pomiarów) -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline85"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.85" />
+
+    <!-- 1. NAGŁÓWEK (NAVBAR) - 15% -->
     <LinearLayout
         android:id="@+id/headerLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#FF822E"
+        android:gravity="center"
         android:orientation="vertical"
-        android:background="#800080"
-        android:padding="16dp"
+        android:padding="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/guideline15"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/tvDetailName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            tools:text="Device Name" />
-
+        <!-- Teraz tylko MAC Adres, wyśrodkowany, duży i czytelny -->
         <TextView
             android:id="@+id/tvDetailAddress"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:gravity="center"
             tools:text="AA:BB:CC:DD:EE:FF" />
-
-        <TextView
-            android:id="@+id/tvConnectionStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Connecting..."
-            android:textColor="@android:color/holo_orange_dark"/>
-
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/btnDisconnect"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Disconnect"
-        app:layout_constraintBottom_toBottomOf="parent" />
-
-
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/headerLayout"
-        app:layout_constraintBottom_toTopOf="@id/btnDisconnect">
+        android:orientation="vertical"
+        app:layout_constraintBottom_toTopOf="@+id/guideline85"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/guideline15">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Temperature"
-            android:textSize="18sp"
-            android:textColor="#888"/>
+            android:textColor="#ffff"
+            android:textSize="24sp" />
 
         <TextView
             android:id="@+id/tvDetailTemp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="48sp"
+            android:layout_marginTop="16dp"
             android:textStyle="bold"
-            tools:text="--.-- °C" />
+            android:textSize="60sp"
+            android:text="--.-- °C"
+            tools:text="24.50 °C" />
     </LinearLayout>
+
+
+    <Button
+        android:id="@+id/btnDisconnect"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="32dp"
+        android:text="Disconnect"
+        android:textColor="#ffff"
+        android:backgroundTint="#FF822E"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/guideline85" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

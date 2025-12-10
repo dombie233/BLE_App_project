@@ -1,6 +1,6 @@
-package com.dombien.bleappscantest
+package com.dombien.bleappscantest.BLE
 
 class BleDevice(
     var name: String?,
     var address: String,
-) 
+)
