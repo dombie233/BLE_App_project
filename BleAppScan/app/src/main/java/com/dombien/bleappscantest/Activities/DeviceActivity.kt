@@ -64,7 +64,6 @@ class DeviceActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_device)
 
-        // Inicjalizacja menedżera powiadomień
         notificationManager = NotificationManagerCompat.from(this)
         createNotificationChannel()
 
@@ -73,7 +72,6 @@ class DeviceActivity : AppCompatActivity() {
         btnDisconnect = findViewById(R.id.btnDisconnect)
 
         deviceAddress = intent.getStringExtra("DEVICE_ADDRESS")
-        // Pobieramy nazwę, jeśli jest null to wstawiamy domyślną
         deviceName = intent.getStringExtra("DEVICE_NAME") ?: "Unknown Device"
 
         tvDetailAddress.text = deviceAddress ?: "Unknown Address"
@@ -96,7 +94,7 @@ class DeviceActivity : AppCompatActivity() {
         }
     }
 
-    // --- LOGIKA POWIADOMIEŃ ---
+
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -220,9 +218,8 @@ class DeviceActivity : AppCompatActivity() {
                 }, 600)
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                runOnUiThread { tvDetailTemp.text = NO_DATA_VALUE }
-                // Usuwamy powiadomienie po utracie połączenia
-                cancelNotification()
+                runOnUiThread { tvDetailTemp.text = NO_DATA_VALUE
+                    cancelNotification()
             }
         }
 
@@ -238,10 +235,8 @@ class DeviceActivity : AppCompatActivity() {
                 val temperatureCelsius = temperatureValue / 100.0f
                 val formattedTemp = "%.2f °C".format(temperatureCelsius)
 
-                // 1. Aktualizacja powiadomienia w czasie rzeczywistym
                 updateNotification(formattedTemp)
 
-                // 2. Aktualizacja UI
                 runOnUiThread {
                     tvDetailTemp.text = formattedTemp
                 }

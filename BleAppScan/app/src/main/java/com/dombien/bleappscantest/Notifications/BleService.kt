@@ -15,17 +15,15 @@ class BleService : Service() {
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var bluetoothGatt: BluetoothGatt? = null
 
-    // Używamy Twojego managera
     private lateinit var notificationManager: BleNotificationManager
 
     companion object {
-        // Stałe do komunikacji z Activity
+
         const val ACTION_GATT_CONNECTED = "com.dombien.ble.ACTION_GATT_CONNECTED"
         const val ACTION_GATT_DISCONNECTED = "com.dombien.ble.ACTION_GATT_DISCONNECTED"
         const val ACTION_DATA_AVAILABLE = "com.dombien.ble.ACTION_DATA_AVAILABLE"
         const val EXTRA_DATA = "com.dombien.ble.EXTRA_DATA"
 
-        // Komenda zatrzymania
         const val ACTION_STOP_SERVICE = "STOP_SERVICE"
 
         private val ENVIRONMENTAL_SENSING_SERVICE_UUID = UUID.fromString("0000181a-0000-1000-8000-00805f9b34fb")
@@ -37,14 +35,12 @@ class BleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        // Inicjalizacja Twojego managera
         notificationManager = BleNotificationManager(this)
         bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager?.adapter
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Obsługa zatrzymania serwisu
         if (intent?.action == ACTION_STOP_SERVICE) {
             closeConnection()
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -55,17 +51,9 @@ class BleService : Service() {
         val deviceAddress = intent?.getStringExtra("DEVICE_ADDRESS")
         val deviceName = intent?.getStringExtra("DEVICE_NAME") ?: "Unknown Device"
 
-        // 1. URUCHOMIENIE FOREGROUND (To sprawia, że notyfikacji nie da się usunąć)
-        // Musisz dodać metodę .getNotification() do swojego BleNotificationManager (jak w poprzedniej odpowiedzi)
-        // Jeśli jej nie dodałeś, użyj notificationManager.updateNotification(...), ale startForeground wymaga obiektu Notification.
-        // Prowizoryczne rozwiązanie jeśli nie zmieniłeś Managera:
-        notificationManager.updateNotification(deviceName, "Connecting...")
-        // UWAGA: Aby to zadziałało w 100% poprawnie jako Foreground Service,
-        // musisz w Managerze mieć funkcję zwracającą `Notification`.
-        // Zakładam tutaj, że manager.updateNotification wywołuje notify(), ale dla serwisu potrzebujemy startForeground.
 
-        // POPRAWNY SPOSÓB (wymaga zmiany w Managerze na zwracanie obiektu):
-        // startForeground(1001, notificationManager.getNotification(deviceName, "Background service active"))
+        notificationManager.updateNotification(deviceName, "Connecting...")
+
         val notification = notificationManager.getNotification(deviceName, "Connected")
         startForeground(1001, notification)
         if (deviceAddress != null) {
@@ -78,8 +66,7 @@ class BleService : Service() {
     private fun connectToDevice(address: String) {
         val device = bluetoothAdapter?.getRemoteDevice(address) ?: return
 
-        // FIX: Dodanie TRANSPORT_LE jest kluczowe, aby wymusić tryb Low Energy.
-        // Bez tego Android może nie wiedzieć, że ma zainicjować parowanie BLE.
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             bluetoothGatt = device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
         } else {
@@ -91,11 +78,13 @@ class BleService : Service() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 broadcastUpdate(ACTION_GATT_CONNECTED)
-                notificationManager.updateNotification(gatt.device.name ?: "Device", "Connected. Waiting...")
+                notificationManager.updateNotification(gatt.device.name ?:
+                "Device", "Connected. Waiting...")
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 broadcastUpdate(ACTION_GATT_DISCONNECTED)
-                notificationManager.updateNotification("Disconnected", "Waiting for reconnect...")
+                notificationManager.updateNotification("Disconnected",
+                    "Waiting for reconnect...")
             }
         }
 
@@ -118,10 +107,10 @@ class BleService : Service() {
                 val tempCelsius = tempValue / 100.0f
                 val text = "%.2f °C".format(tempCelsius)
 
-                // Aktualizacja notyfikacji przez Twój manager
+
                 notificationManager.updateNotification(gatt.device.name ?: "Device", text)
 
-                // Wysłanie danych do Activity
+
                 broadcastUpdate(ACTION_DATA_AVAILABLE, text)
             }
         }

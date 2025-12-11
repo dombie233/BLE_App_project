@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
-    <!-- Linia pomocnicza: 15% (koniec Navbara) -->
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline15"
         android:layout_width="wrap_content"
@@ -14,7 +13,6 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_percent="0.15" />
 
-    <!-- Linia pomocnicza: 85% (koniec obszaru pomiarów) -->
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline85"
         android:layout_width="wrap_content"
@@ -22,7 +20,6 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_percent="0.85" />
 
-    <!-- 1. NAGŁÓWEK (NAVBAR) - 15% -->
     <LinearLayout
         android:id="@+id/headerLayout"
         android:layout_width="0dp"
@@ -36,7 +33,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Teraz tylko MAC Adres, wyśrodkowany, duży i czytelny -->
         <TextView
             android:id="@+id/tvDetailAddress"
             android:layout_width="match_parent"
