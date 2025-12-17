@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#121212"
     android:fitsSystemWindows="true">
 
     <androidx.constraintlayout.widget.Guideline
@@ -20,6 +21,7 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_percent="0.85" />
 
+    <!-- Header -->
     <LinearLayout
         android:id="@+id/headerLayout"
         android:layout_width="0dp"
@@ -38,13 +40,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:gravity="center"
             tools:text="AA:BB:CC:DD:EE:FF" />
-
     </LinearLayout>
 
+    <!-- Content -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -55,32 +57,112 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/guideline15">
 
+        <!-- Temperature Big -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Temperature"
-            android:textColor="#ffff"
-            android:textSize="24sp" />
+            android:textColor="#AAAAAA"
+            android:textSize="16sp" />
 
         <TextView
             android:id="@+id/tvDetailTemp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="8dp"
             android:textStyle="bold"
-            android:textSize="60sp"
+            android:textSize="50sp"
+            android:textColor="#FFFFFF"
             android:text="--.-- °C"
             tools:text="24.50 °C" />
+
+        <!-- Extra Info Grid -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Humidity -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Humidity"
+                    android:textColor="#AAAAAA"/>
+                <TextView
+                    android:id="@+id/tvDetailHumidity"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-- %"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#4FC3F7"/>
+            </LinearLayout>
+
+            <!-- Battery -->
+<!--            <LinearLayout-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_weight="1"-->
+<!--                android:gravity="center"-->
+<!--                android:orientation="vertical">-->
+<!--                <TextView-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:text="Battery"-->
+<!--                    android:textColor="#AAAAAA"/>-->
+<!--                <TextView-->
+<!--                    android:id="@+id/tvDetailBattery"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:text="&#45;&#45; %"-->
+<!--                    android:textSize="20sp"-->
+<!--                    android:textStyle="bold"-->
+<!--                    android:textColor="#81C784"/>-->
+<!--            </LinearLayout>-->
+
+            <!-- RSSI -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="RSSI"
+                    android:textColor="#AAAAAA"/>
+                <TextView
+                    android:id="@+id/tvDetailRssi"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#E57373"/>
+            </LinearLayout>
+
+        </LinearLayout>
+
     </LinearLayout>
 
 
     <Button
         android:id="@+id/btnDisconnect"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="50dp"
         android:layout_marginHorizontal="32dp"
         android:text="Disconnect"
-        android:textColor="#ffff"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
         android:backgroundTint="#FF822E"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

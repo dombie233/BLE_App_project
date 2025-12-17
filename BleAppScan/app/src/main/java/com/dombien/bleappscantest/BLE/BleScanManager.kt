@@ -28,7 +28,7 @@ class BleScanManager(
     var isScanning = false
         private set
 
-    private val FILTER_ENABLED = true
+    private val FILTER_ENABLED = false
     private val TARGET_DEVICES = listOf(
         "C7:95:DA:5F:44:8A" // Valkyrie
     )
