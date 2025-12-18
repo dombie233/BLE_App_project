@@ -57,24 +57,24 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/guideline15">
 
-        <!-- Temperature Big -->
+        <!-- Value 1 (Główna) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Temperature"
+            android:text="Value 1"
             android:textColor="#AAAAAA"
             android:textSize="16sp" />
 
         <TextView
-            android:id="@+id/tvDetailTemp"
+            android:id="@+id/tvDetailValue1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:textStyle="bold"
             android:textSize="50sp"
             android:textColor="#FFFFFF"
-            android:text="--.-- °C"
-            tools:text="24.50 °C" />
+            android:text="--"
+            tools:text="12345" />
 
         <!-- Extra Info Grid -->
         <LinearLayout
@@ -84,7 +84,7 @@
             android:orientation="horizontal"
             android:gravity="center">
 
-            <!-- Humidity -->
+            <!-- Value 2 -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -94,39 +94,17 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Humidity"
+                    android:text="Value 2"
                     android:textColor="#AAAAAA"/>
                 <TextView
-                    android:id="@+id/tvDetailHumidity"
+                    android:id="@+id/tvDetailValue2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="-- %"
+                    android:text="--"
                     android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="#FFF"/>
             </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Battery"
-                    android:textColor="#AAAAAA"/>
-                <TextView
-                    android:id="@+id/tvDetailBattery"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="-- %"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:textColor="#FFF"/>
-            </LinearLayout>
-
 
             <!-- RSSI -->
             <LinearLayout
@@ -153,7 +131,6 @@
         </LinearLayout>
 
     </LinearLayout>
-
 
     <Button
         android:id="@+id/btnDisconnect"

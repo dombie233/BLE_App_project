@@ -53,7 +53,10 @@
             android:name=".Activities.DeviceActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
             android:windowSoftInputMode="adjustResize" />
-
+        <activity
+            android:name=".Activities.DefaultDeviceActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

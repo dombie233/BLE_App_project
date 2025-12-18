@@ -21,17 +21,17 @@ import kotlinx.coroutines.launch
 class BleForegroundService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "ble_sensor_channel_v4_boomerang" // Nowe ID dla pewności
+        const val CHANNEL_ID = "ble_sensor_channel_v4_boomerang"
         const val NOTIFICATION_ID = 1001
 
-        // Akcja przycisku Disconnect
+
         const val ACTION_DISCONNECT_REQUEST = "com.dombien.bleappscantest.ACTION_DISCONNECT"
 
-        // Akcja wykrycia usunięcia powiadomienia (swipe)
+
         const val ACTION_NOTIFICATION_DELETED = "com.dombien.bleappscantest.ACTION_NOTIF_DELETED"
     }
 
-    // Zapamiętujemy ostatnią temperaturę, żeby ją przywrócić po swipe
+
     private var lastTemperature: String = "Monitoring..."
 
     override fun onCreate() {
@@ -69,7 +69,7 @@ class BleForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Intent dla przycisku Disconnect
+
         val disconnectIntent = Intent(ACTION_DISCONNECT_REQUEST).apply {
             setPackage(packageName)
         }
@@ -78,8 +78,7 @@ class BleForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // --- KLUCZOWE: Intent wykrywający usunięcie (swipe) ---
-        // Ten intent zostanie wysłany do TEGO SAMEGO serwisu
+
         val deleteIntent = Intent(this, BleForegroundService::class.java).apply {
             action = ACTION_NOTIFICATION_DELETED
         }
@@ -99,7 +98,7 @@ class BleForegroundService : Service() {
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setContentIntent(pendingIntent)
-            .setDeleteIntent(pendingDeleteIntent) // <--- Tutaj podpinamy wykrywacz swipe'a
+            .setDeleteIntent(pendingDeleteIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Disconnect", pendingDisconnectIntent)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -110,7 +109,7 @@ class BleForegroundService : Service() {
     }
 
     private fun startForegroundServiceWithNotification(content: String) {
-        lastTemperature = content // Zapisujemy stan
+        lastTemperature = content
         val notification = buildNotification(content)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -137,7 +136,7 @@ class BleForegroundService : Service() {
 
                 CoroutineScope(Dispatchers.Main).launch {
                     delay(100)
-                    // Przywracamy powiadomienie siłą!
+
                     startForegroundServiceWithNotification(lastTemperature)
                 }
             }

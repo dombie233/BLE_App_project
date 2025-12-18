@@ -21,14 +21,12 @@ import com.dombien.bleappscantest.R
 import java.util.UUID
 
 @SuppressLint("MissingPermission")
-class DeviceActivity : AppCompatActivity() {
+class DefaultDeviceActivity : AppCompatActivity() {
 
     // UI Views
     private lateinit var tvDetailAddress: TextView
-    private lateinit var tvDetailTemp: TextView
-    private lateinit var tvDetailHumidity: TextView
-
-    private lateinit var tvDetailBattery: TextView
+    private lateinit var tvDetailValue1: TextView
+    private lateinit var tvDetailValue2: TextView
     private lateinit var tvDetailRssi: TextView
     private lateinit var btnDisconnect: Button
 
@@ -41,33 +39,21 @@ class DeviceActivity : AppCompatActivity() {
     // State
     private val handler = Handler(Looper.getMainLooper())
 
-
-    private var currentTempStr = "--.-- °C"
-    private var currentHumStr = "-- %"
-    private var currentBatStr = "-- %"
+    private var currentVal1Str = "--"
+    private var currentVal2Str = "--"
     private var currentRssiStr = "-- dBm"
 
     companion object {
-        private const val TAG = "DeviceActivity"
+        private const val TAG = "DefaultDeviceActivity"
 
-        // --- UUIDs ---
-        // Environmental Sensing Service
-        private val ESS_SERVICE_UUID = UUID.fromString("0000181a-0000-1000-8000-00805f9b34fb")
-        private val TEMP_CHAR_UUID = UUID.fromString("00002a6e-0000-1000-8000-00805f9b34fb")
-
-
-
-        private val HUMIDITY_CHAR_UUID = UUID.fromString("00002a6f-0000-1000-8000-00805f9b34fb")
-
-        // Battery Service
-        private val BATTERY_SERVICE_UUID = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
-        private val BATTERY_LEVEL_CHAR_UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
+        private val SERVICE_UUID = UUID.fromString("0000181a-0000-1000-8000-00805f9b34fb")
+        private val VALUE1_CHAR_UUID = UUID.fromString("00002a6e-0000-1000-8000-00805f9b34fb") // Np. Temp
+        private val VALUE2_CHAR_UUID = UUID.fromString("00002a6f-0000-1000-8000-00805f9b34fb") // Np. Hum
 
         // Client Config (Standard)
         private val CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 
-    // Notification signal receiver (Bumerang/Disconnect)
     private val disconnectReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == BleForegroundService.ACTION_DISCONNECT_REQUEST) {
@@ -80,67 +66,49 @@ class DeviceActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_device)
+        setContentView(R.layout.activity_default_device)
 
         // UI Binding
         tvDetailAddress = findViewById(R.id.tvDetailAddress)
-        tvDetailTemp = findViewById(R.id.tvDetailTemp)
-        tvDetailHumidity = findViewById(R.id.tvDetailHumidity)
-        tvDetailBattery = findViewById(R.id.tvDetailBattery)
+        tvDetailValue1 = findViewById(R.id.tvDetailValue1)
+        tvDetailValue2 = findViewById(R.id.tvDetailValue2)
         tvDetailRssi = findViewById(R.id.tvDetailRssi)
         btnDisconnect = findViewById(R.id.btnDisconnect)
 
-        // Init Bluetooth
         bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager?.adapter
-
-        // Get Intent Data
         deviceAddress = intent.getStringExtra("DEVICE_ADDRESS")
         tvDetailAddress.text = deviceAddress ?: "Unknown Address"
 
-        // Register Receiver
         val filter = IntentFilter(BleForegroundService.ACTION_DISCONNECT_REQUEST)
         ContextCompat.registerReceiver(this, disconnectReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
 
-        // Listeners
         btnDisconnect.setOnClickListener {
             performCleanUp()
             setResult(RESULT_OK)
             finish()
         }
 
-        // Start Logic
         startBleService("Connecting...")
-        if (deviceAddress != null) {
-            connectToDevice(deviceAddress!!)
-        } else {
-            Toast.makeText(this, "No device address", Toast.LENGTH_SHORT).show()
-            finish()
-        }
+        if (deviceAddress != null) connectToDevice(deviceAddress!!)
+        else finish()
     }
 
     private fun updateUIAndService() {
-
         runOnUiThread {
-            tvDetailTemp.text = currentTempStr
-            tvDetailHumidity.text = currentHumStr
-            tvDetailBattery.text = currentBatStr
+            tvDetailValue1.text = currentVal1Str
+            tvDetailValue2.text = currentVal2Str
             tvDetailRssi.text = currentRssiStr
         }
-
-
-        val notificationText = "Temperature: $currentTempStr \n Humidity: $currentHumStr \n Rssi: $currentRssiStr \n Battery: $currentBatStr"
+        val notificationText = "V1: $currentVal1Str | V2: $currentVal2Str | RSSI: $currentRssiStr"
         startBleService(notificationText)
     }
 
     private fun startBleService(status: String) {
         val serviceIntent = Intent(this, BleForegroundService::class.java)
         serviceIntent.putExtra("temperature", status)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent)
+        else startService(serviceIntent)
     }
 
     private fun stopBleService() {
@@ -151,13 +119,9 @@ class DeviceActivity : AppCompatActivity() {
     private fun performCleanUp() {
         stopBleService()
         if (bluetoothGatt != null) {
-            val deviceToForget = bluetoothGatt?.device
             try { bluetoothGatt?.disconnect() } catch (e:Exception){}
             try { bluetoothGatt?.close() } catch (e:Exception){}
             bluetoothGatt = null
-            if (deviceToForget != null) {
-                removeBond(deviceToForget)
-            }
         }
     }
 
@@ -176,17 +140,6 @@ class DeviceActivity : AppCompatActivity() {
         }
     }
 
-    private fun removeBond(device: BluetoothDevice) {
-        try {
-            if (device.bondState == BluetoothDevice.BOND_BONDED) {
-                val method = device.javaClass.getMethod("removeBond")
-                method.invoke(device)
-            }
-        } catch (e: Exception) { Log.e(TAG, "Failed to remove bond", e) }
-    }
-
-    // --- GATT CALLBACKS ---
-
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
@@ -194,10 +147,7 @@ class DeviceActivity : AppCompatActivity() {
                 handler.postDelayed({ gatt.discoverServices() }, 1000)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 startBleService("Disconnected")
-                runOnUiThread {
-                    tvDetailTemp.text = "--"
-                    tvDetailRssi.text = "Offline"
-                }
+                runOnUiThread { tvDetailValue1.text = "--"; tvDetailRssi.text = "Offline" }
             }
         }
 
@@ -209,26 +159,13 @@ class DeviceActivity : AppCompatActivity() {
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             handleCharacteristicUpdate(characteristic)
-
-
             gatt.readRemoteRssi()
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "The value was taken from the readout (Read).: ${characteristic.uuid}")
-                handleCharacteristicUpdate(characteristic)
-            } else {
-
-                Log.e(TAG, "Characteristic read error! Status: $status (GATT_INSUFFICIENT_AUTHENTICATION=5, GATT_FAILURE=257)")
-
-
-                if (status == 137 || status == 5) {
-                    Log.w(TAG, "Attempting pairing...")
-                    gatt.device.createBond()
-                }
-            }
+            if (status == BluetoothGatt.GATT_SUCCESS) handleCharacteristicUpdate(characteristic)
         }
+
         override fun onReadRemoteRssi(gatt: BluetoothGatt, rssi: Int, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 currentRssiStr = "$rssi dBm"
@@ -237,82 +174,41 @@ class DeviceActivity : AppCompatActivity() {
         }
     }
 
-    // Decoding value support
     private fun handleCharacteristicUpdate(characteristic: BluetoothGattCharacteristic) {
         val uuid = characteristic.uuid
-
         when (uuid) {
-            TEMP_CHAR_UUID -> {
+            VALUE1_CHAR_UUID -> {
                 val valInt = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0)
-                val celsius = valInt / 100.0f
-                currentTempStr = "%.2f °C".format(celsius)
+                currentVal1Str = "${valInt / 100.0f}"
             }
-            HUMIDITY_CHAR_UUID -> {
-
+            VALUE2_CHAR_UUID -> {
                 val valInt = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 0)
-                val hum = valInt / 100.0f
-                currentHumStr = "%.2f %%".format(hum)
-            }
-            BATTERY_LEVEL_CHAR_UUID -> {
-
-                val data = characteristic.value
-                if (data != null && data.isNotEmpty()) {
-
-                    val batteryLevel = data[0].toInt() and 0xFF
-                    currentBatStr = "$batteryLevel %"
-                    Log.d(TAG, "Battery parsed: $batteryLevel %")
-                } else {
-                    Log.w(TAG, "Battery data is empty!")
-                }
+                currentVal2Str = "${valInt / 100.0f}"
             }
         }
         updateUIAndService()
     }
 
-    // --- Notification activation sequence  ---
-
     private fun enableNotificationsSequence(gatt: BluetoothGatt) {
-        val delayStep = 3000L
         var currentDelay = 0L
+        val delayStep = 1000L
 
-        //Temperature (Notify)
+        // Value 1
         handler.postDelayed({
-            Log.d(TAG, "Enabling Temperature...")
-            enableNotification(gatt, ESS_SERVICE_UUID, TEMP_CHAR_UUID)
+            enableNotification(gatt, SERVICE_UUID, VALUE1_CHAR_UUID)
         }, currentDelay)
-
         currentDelay += delayStep
 
-        // Humidity (Notify)
+        // Value 2
         handler.postDelayed({
-            Log.d(TAG, "Enabling Humidity...")
-            enableNotification(gatt, ESS_SERVICE_UUID, HUMIDITY_CHAR_UUID)
-        }, currentDelay)
-
-        currentDelay += delayStep
-
-
-        //Battery (READ)
-        handler.postDelayed({
-            Log.d(TAG, "Reading Battery Initial Value...")
-            readCharacteristic(gatt, BATTERY_SERVICE_UUID, BATTERY_LEVEL_CHAR_UUID)
-        }, currentDelay)
-
-        currentDelay += delayStep
-
-        //Battery (Notify)
-        handler.postDelayed({
-            Log.d(TAG, "Enabling Battery Notifications...")
-            enableNotification(gatt, BATTERY_SERVICE_UUID, BATTERY_LEVEL_CHAR_UUID)
+            enableNotification(gatt, SERVICE_UUID, VALUE2_CHAR_UUID)
         }, currentDelay)
     }
 
     private fun enableNotification(gatt: BluetoothGatt, serviceUuid: UUID, charUuid: UUID): Boolean {
         val service = gatt.getService(serviceUuid) ?: return false
         val characteristic = service.getCharacteristic(charUuid) ?: return false
-
         gatt.setCharacteristicNotification(characteristic, true)
-
         val descriptor = characteristic.getDescriptor(CLIENT_CHARACTERISTIC_CONFIG_UUID)
         if (descriptor != null) {
             descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
@@ -320,30 +216,5 @@ class DeviceActivity : AppCompatActivity() {
             return true
         }
         return false
-    }
-
-    private fun readCharacteristic(gatt: BluetoothGatt, serviceUuid: UUID, charUuid: UUID) {
-        val service = gatt.getService(serviceUuid)
-        if (service == null) {
-            Log.e(TAG, "ERROR: Service not found: $serviceUuid")
-            return
-        }
-        val characteristic = service.getCharacteristic(charUuid)
-        if (characteristic == null) {
-            Log.e(TAG, "ERROR: Characteristics not found: $charUuid")
-            return
-        }
-
-        if ((characteristic.properties and BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
-            Log.e(TAG, "ERROR: This characteristic is not readable!")
-            return
-        }
-
-        val success = gatt.readCharacteristic(characteristic)
-        if (success) {
-            Log.d(TAG, "Success: A read request has been sent for  $charUuid")
-        } else {
-            Log.e(TAG, "ERROR: Android rejected the readCharacteristic query (Stack busy?)")
-        }
     }
 }

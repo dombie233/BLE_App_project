@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity(), BleScanManager.BleScanCallback {
                 val address = entry.key
                 val lastSeenTime = lastSeenMap[address] ?: 0L
 
-                // Jeśli urządzenie milczy dłużej niż 5 sekund -> usuń z listy
+
                 if (currentTime - lastSeenTime > DEVICE_TIMEOUT_MS) {
                     iterator.remove()
                     lastSeenMap.remove(address)
@@ -105,8 +105,8 @@ class MainActivity : AppCompatActivity(), BleScanManager.BleScanCallback {
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
 
         swipeRefreshLayout.setColorSchemeResources(
-            android.R.color.holo_blue_bright,
-            android.R.color.holo_green_light,
+            android.R.color.holo_orange_light,
+            android.R.color.white,
             android.R.color.holo_orange_light,
             android.R.color.holo_red_light
         )
@@ -170,16 +170,24 @@ class MainActivity : AppCompatActivity(), BleScanManager.BleScanCallback {
         if (connectionState == BluetoothProfile.STATE_CONNECTED) {
             Toast.makeText(this, "Device already connected elsewhere.", Toast.LENGTH_SHORT).show()
         } else {
-            // We stop scanning before moving on
+
             stopBleScanProcess()
 
-            val intent = Intent(this, DeviceActivity::class.java)
+
+            val targetActivity = if (device.name != null && device.name.equals("valkyrie1", ignoreCase = true)) {
+
+                DeviceActivity::class.java
+            } else {
+
+                DefaultDeviceActivity::class.java
+            }
+
+            val intent = Intent(this, targetActivity)
             intent.putExtra("DEVICE_ADDRESS", device.address)
             intent.putExtra("DEVICE_NAME", device.name)
             deviceActivityLauncher.launch(intent)
         }
     }
-
     private fun resetInterface() {
         //  here we clear everything
         stopBleScanProcess()
